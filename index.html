@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Chupetinha Bar — Caixa</title>
+<title>Chupetinha Bar & Bingo — Caixa</title>
 <style>
 body{font-family:Arial,sans-serif;margin:0;background:#f5f5f5;color:#222}
 main{max-width:520px;margin:auto;padding:16px}
@@ -16,13 +16,19 @@ label{display:block;font-size:14px;margin:10px 0}
 input,select,button{width:100%;box-sizing:border-box;padding:12px;border:1px solid #ccc;border-radius:10px;font-size:16px}
 button{background:#e51d2a;color:white;border:0;font-weight:bold;margin-top:8px}
 .secondary{background:#eee;color:#222}
+.danger{background:#777}
 .row{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid #eee}
 small{color:#666}
+.badge{display:inline-block;padding:5px 9px;border-radius:999px;background:#f2f5f7;font-size:12px}
+.history-item{padding:12px 0;border-bottom:1px solid #eee}
+.notice{background:#fff4c2;border-radius:10px;padding:10px;font-size:13px;margin-bottom:12px}
 </style>
 </head>
 <body>
 <main>
 <h1>🍻 Chupetinha Bar & Bingo</h1>
+<div class="notice">💾 Os lançamentos são salvos automaticamente neste celular. Fechar o navegador não apaga os dados.</div>
+
 <div class="grid">
 <div class="stat">Vendas hoje<b id="v">R$ 0,00</b></div>
 <div class="stat">Despesas<b id="d">R$ 0,00</b></div>
@@ -48,31 +54,77 @@ small{color:#666}
 </div>
 
 <div class="card">
-<h2>Fechamento</h2>
+<h2>Fechamento de hoje</h2>
 <div id="fech"></div>
+<button id="fechar">Fechar caixa do dia</button>
 </div>
 
 <div class="card">
-<h2>Últimos lançamentos</h2>
+<h2>Últimos lançamentos de hoje</h2>
 <div id="lista"><small>Nenhum lançamento.</small></div>
-<button id="limpar" class="secondary">Limpar lançamentos</button>
+</div>
+
+<div class="card">
+<h2>📊 Histórico</h2>
+<div id="historico"><small>Nenhum dia fechado ainda.</small></div>
+<button id="limpar" class="danger">Apagar todos os dados deste celular</button>
 </div>
 </main>
+
 <script>
 const produtos=["Porção de batata frita","Porção de ovo de codorna (12 un)","Porção de salgados","Porção de filé de tilápia","Porção de carne de sol","Porção de tripa","Pastel - carne","Pastel - frango","Pastel - queijo","Pastel - misto","Porção camarão alho e óleo","Cuscuz ou macaxeira","Espetinho - boi","Espetinho - frango","Espetinho - porco","Espetinho - coração","Espetinho - toscana","Espetinho - pão de alho","Cerveja","Refrigerante"];
 const p=document.getElementById("p"); produtos.forEach(x=>p.add(new Option(x)));
-let vendas=[],despesas=[];
+const KEY="chupetinha_caixa_v2";
+const hoje=()=>new Date().toISOString().slice(0,10);
 const br=n=>new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(n||0);
-function render(){
- let tv=vendas.reduce((a,x)=>a+x.total,0),td=despesas.reduce((a,x)=>a+x.valor,0);
- v.textContent=br(tv);d.textContent=br(td);s.textContent=br(tv-td);q.textContent=vendas.reduce((a,x)=>a+x.qtd,0);
- fech.innerHTML=["Dinheiro","Pix","Débito","Crédito","Fiado"].map(f=>`<div class="row"><span>${f}</span><b>${br(vendas.filter(x=>x.pag==f).reduce((a,x)=>a+x.total,0))}</b></div>`).join("");
- let a=[...vendas.map(x=>({t:"Venda",x:`${x.prod} × ${x.qtd} · ${x.pag}`,n:x.total})),...despesas.map(x=>({t:"Despesa",x:`${x.desc} · ${x.pag}`,n:-x.valor}))].slice(-10).reverse();
- lista.innerHTML=a.length?a.map(x=>`<div class="row"><span><b>${x.t}</b><br><small>${x.x}</small></span><b>${br(x.n)}</b></div>`).join(""):"<small>Nenhum lançamento.</small>";
+const fmtData=s=>new Date(s+"T12:00:00").toLocaleDateString("pt-BR");
+
+let db=JSON.parse(localStorage.getItem(KEY)||'{"dia":"","vendas":[],"despesas":[],"historico":[]}');
+if(db.dia!==hoje()){
+  if(db.dia && (db.vendas.length||db.despesas.length)){
+    arquivarAtual();
+  }
+  db.dia=hoje(); db.vendas=[]; db.despesas=[]; salvar();
 }
-addv.onclick=()=>{let n=Number(preco.value),qt=Math.max(1,Number(qtd.value)||1);if(n<=0)return alert("Digite o preço do produto.");vendas.push({prod:p.value,qtd:qt,pag:pag.value,total:n*qt});render()};
-addd.onclick=()=>{let n=Number(valor.value);if(n<=0)return alert("Digite o valor da despesa.");despesas.push({desc:desc.value.trim()||"Despesa",valor:n,pag:pagd.value});desc.value="";valor.value="";render()};
-limpar.onclick=()=>{if(confirm("Apagar os lançamentos?")){vendas=[];despesas=[];render()}};
+function salvar(){localStorage.setItem(KEY,JSON.stringify(db))}
+function arquivarAtual(){
+  const tv=db.vendas.reduce((a,x)=>a+x.total,0), td=db.despesas.reduce((a,x)=>a+x.valor,0);
+  if(!db.dia)return;
+  db.historico.unshift({dia:db.dia,vendas:db.vendas,despesas:db.despesas,totalVendas:tv,totalDespesas:td,saldo:tv-td});
+}
+function render(){
+ let tv=db.vendas.reduce((a,x)=>a+x.total,0),td=db.despesas.reduce((a,x)=>a+x.valor,0);
+ v.textContent=br(tv);d.textContent=br(td);s.textContent=br(tv-td);q.textContent=db.vendas.reduce((a,x)=>a+x.qtd,0);
+ fech.innerHTML=["Dinheiro","Pix","Débito","Crédito","Fiado"].map(f=>`<div class="row"><span>${f}</span><b>${br(db.vendas.filter(x=>x.pag==f).reduce((a,x)=>a+x.total,0))}</b></div>`).join("")+
+ `<div class="row"><span><b>Total</b></span><b>${br(tv-td)}</b></div>`;
+ let a=[...db.vendas.map(x=>({t:"Venda",x:`${x.prod} × ${x.qtd} · ${x.pag}`,n:x.total})),...db.despesas.map(x=>({t:"Despesa",x:`${x.desc} · ${x.pag}`,n:-x.valor}))].slice(-10).reverse();
+ lista.innerHTML=a.length?a.map(x=>`<div class="row"><span><b>${x.t}</b><br><small>${x.x}</small></span><b>${br(x.n)}</b></div>`).join(""):"<small>Nenhum lançamento.</small>";
+ historico.innerHTML=db.historico.length?db.historico.map(h=>`<div class="history-item"><b>${fmtData(h.dia)}</b><br><small>Vendas: ${br(h.totalVendas)} · Despesas: ${br(h.totalDespesas)}</small><br><b>Saldo: ${br(h.saldo)}</b></div>`).join(""):"<small>Nenhum dia fechado ainda.</small>";
+}
+addv.onclick=()=>{
+ let n=Number(preco.value),qt=Math.max(1,Number(qtd.value)||1);
+ if(n<=0)return alert("Digite o preço do produto.");
+ db.vendas.push({prod:p.value,qtd:qt,pag:pag.value,total:n*qt,horario:new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})});
+ salvar(); render(); preco.value=""; qtd.value=1;
+};
+addd.onclick=()=>{
+ let n=Number(valor.value);
+ if(n<=0)return alert("Digite o valor da despesa.");
+ db.despesas.push({desc:desc.value.trim()||"Despesa",valor:n,pag:pagd.value,horario:new Date().toLocaleTimeString("pt-BR",{hour:"2-digit",minute:"2-digit"})});
+ salvar(); render(); desc.value=""; valor.value="";
+};
+fechar.onclick=()=>{
+ if(!db.vendas.length&&!db.despesas.length)return alert("Não há lançamentos para fechar.");
+ const tv=db.vendas.reduce((a,x)=>a+x.total,0),td=db.despesas.reduce((a,x)=>a+x.valor,0);
+ if(confirm(`Fechar o caixa de ${fmtData(db.dia)}?\n\nVendas: ${br(tv)}\nDespesas: ${br(td)}\nSaldo: ${br(tv-td)}\n\nOs dados serão guardados no Histórico.`)){
+   arquivarAtual(); db.dia=hoje(); db.vendas=[]; db.despesas=[]; salvar(); render(); alert("Caixa fechado e salvo no Histórico!");
+ }
+};
+limpar.onclick=()=>{
+ if(confirm("ATENÇÃO: apagar todos os lançamentos e o histórico deste celular?")){
+   db={dia:hoje(),vendas:[],despesas:[],historico:[]}; salvar(); render();
+ }
+};
 render();
 </script>
 </body>
