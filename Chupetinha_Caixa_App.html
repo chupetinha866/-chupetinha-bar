@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Chupetinha Bar — Caixa</title>
+<style>
+body{font-family:Arial,sans-serif;margin:0;background:#f5f5f5;color:#222}
+main{max-width:520px;margin:auto;padding:16px}
+h1{font-size:24px;margin:4px 0 16px}
+.card{background:#fff;border-radius:16px;padding:16px;margin:12px 0;box-shadow:0 2px 10px #0001}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{padding:12px;background:#f2f5f7;border-radius:12px}
+.stat b{font-size:20px;display:block;margin-top:4px}
+label{display:block;font-size:14px;margin:10px 0}
+input,select,button{width:100%;box-sizing:border-box;padding:12px;border:1px solid #ccc;border-radius:10px;font-size:16px}
+button{background:#e51d2a;color:white;border:0;font-weight:bold;margin-top:8px}
+.secondary{background:#eee;color:#222}
+.row{display:flex;justify-content:space-between;gap:12px;padding:9px 0;border-bottom:1px solid #eee}
+small{color:#666}
+</style>
+</head>
+<body>
+<main>
+<h1>🍻 Chupetinha Bar & Bingo</h1>
+<div class="grid">
+<div class="stat">Vendas hoje<b id="v">R$ 0,00</b></div>
+<div class="stat">Despesas<b id="d">R$ 0,00</b></div>
+<div class="stat">Saldo<b id="s">R$ 0,00</b></div>
+<div class="stat">Itens vendidos<b id="q">0</b></div>
+</div>
+
+<div class="card">
+<h2>Registrar venda</h2>
+<label>Produto<select id="p"></select></label>
+<label>Quantidade<input id="qtd" type="number" min="1" value="1"></label>
+<label>Preço unitário (R$)<input id="preco" type="number" min="0" step=".01" placeholder="Digite o preço"></label>
+<label>Pagamento<select id="pag"><option>Dinheiro</option><option>Pix</option><option>Débito</option><option>Crédito</option><option>Fiado</option></select></label>
+<button id="addv">Adicionar venda</button>
+</div>
+
+<div class="card">
+<h2>Registrar despesa</h2>
+<label>Descrição<input id="desc" placeholder="Ex.: compra de cerveja"></label>
+<label>Valor (R$)<input id="valor" type="number" min="0" step=".01"></label>
+<label>Pagamento<select id="pagd"><option>Dinheiro</option><option>Pix</option><option>Débito</option><option>Crédito</option></select></label>
+<button id="addd">Adicionar despesa</button>
+</div>
+
+<div class="card">
+<h2>Fechamento</h2>
+<div id="fech"></div>
+</div>
+
+<div class="card">
+<h2>Últimos lançamentos</h2>
+<div id="lista"><small>Nenhum lançamento.</small></div>
+<button id="limpar" class="secondary">Limpar lançamentos</button>
+</div>
+</main>
+<script>
+const produtos=["Porção de batata frita","Porção de ovo de codorna (12 un)","Porção de salgados","Porção de filé de tilápia","Porção de carne de sol","Porção de tripa","Pastel - carne","Pastel - frango","Pastel - queijo","Pastel - misto","Porção camarão alho e óleo","Cuscuz ou macaxeira","Espetinho - boi","Espetinho - frango","Espetinho - porco","Espetinho - coração","Espetinho - toscana","Espetinho - pão de alho","Cerveja","Refrigerante"];
+const p=document.getElementById("p"); produtos.forEach(x=>p.add(new Option(x)));
+let vendas=[],despesas=[];
+const br=n=>new Intl.NumberFormat("pt-BR",{style:"currency",currency:"BRL"}).format(n||0);
+function render(){
+ let tv=vendas.reduce((a,x)=>a+x.total,0),td=despesas.reduce((a,x)=>a+x.valor,0);
+ v.textContent=br(tv);d.textContent=br(td);s.textContent=br(tv-td);q.textContent=vendas.reduce((a,x)=>a+x.qtd,0);
+ fech.innerHTML=["Dinheiro","Pix","Débito","Crédito","Fiado"].map(f=>`<div class="row"><span>${f}</span><b>${br(vendas.filter(x=>x.pag==f).reduce((a,x)=>a+x.total,0))}</b></div>`).join("");
+ let a=[...vendas.map(x=>({t:"Venda",x:`${x.prod} × ${x.qtd} · ${x.pag}`,n:x.total})),...despesas.map(x=>({t:"Despesa",x:`${x.desc} · ${x.pag}`,n:-x.valor}))].slice(-10).reverse();
+ lista.innerHTML=a.length?a.map(x=>`<div class="row"><span><b>${x.t}</b><br><small>${x.x}</small></span><b>${br(x.n)}</b></div>`).join(""):"<small>Nenhum lançamento.</small>";
+}
+addv.onclick=()=>{let n=Number(preco.value),qt=Math.max(1,Number(qtd.value)||1);if(n<=0)return alert("Digite o preço do produto.");vendas.push({prod:p.value,qtd:qt,pag:pag.value,total:n*qt});render()};
+addd.onclick=()=>{let n=Number(valor.value);if(n<=0)return alert("Digite o valor da despesa.");despesas.push({desc:desc.value.trim()||"Despesa",valor:n,pag:pagd.value});desc.value="";valor.value="";render()};
+limpar.onclick=()=>{if(confirm("Apagar os lançamentos?")){vendas=[];despesas=[];render()}};
+render();
+</script>
+</body>
+</html>
